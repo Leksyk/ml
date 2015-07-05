@@ -13,7 +13,11 @@ object Utils {
     try writer.write(content) finally writer.close()
   }
 
-  def harmonicMean(values: Vector[Double]): Double = {
-    values.length / values.map(v => 1 / v).sum
+  def harmonicMean(values: Seq[Double]): Double = {
+    values.length / values.map(v => 1.0 / v).sum
+  }
+
+  def mean(values: Seq[Double]): Double = {
+    if (values.nonEmpty) values.sum / values.length else 0
   }
 }
