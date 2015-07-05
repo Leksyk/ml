@@ -1,9 +1,9 @@
 
 
 class IndexedText(val text: Vector[Int],
-                  private val indexToWord: Vector[String],
-                  private val wordToIndex: Map[String, Int],
-                  private val wordIndexToOccurrences: Vector[Vector[Int]]) {
+                  val indexToWord: Vector[String],
+                  val wordToIndex: Map[String, Int],
+                  val wordIndexToOccurrences: Vector[Vector[Int]]) {
   def numWords = indexToWord.length
   def uniqueWords = indexToWord
   def wordIndex(word: String) = wordToIndex(word)
@@ -11,18 +11,16 @@ class IndexedText(val text: Vector[Int],
   def wordOccurrences(wordIndex: Int) = wordIndexToOccurrences(wordIndex)
   println("length (#word): " + text.length)
   println("# unique words: " + uniqueWords.length)
-  println("most common words: " + wordIndexToOccurrences.sortBy(-_.length).take(300).map(inds => wordFromIndex(text(inds.head))).toString())
+  println("most common words: " + wordIndexToOccurrences
+    .sortBy(-_.length)
+    .take(300)
+    .map(inds => wordFromIndex(text(inds.head))).toString())
 }
 
 object TextIndexer {
   def index(text: String): IndexedText = {
-    // Let's get rid of apostrophes.
-    var cleanedText = """\'""".r replaceAllIn(text, "")
-    cleanedText = """\[^A-Za-z]+""".r replaceAllIn(text, " ")
-    // 2 or more sequential spaces will collapse to one.
-    cleanedText = """\s{2}""".r replaceAllIn(cleanedText, " ")
-    cleanedText = cleanedText toLowerCase
-    // Now we have iterator over all indexToWord.
+    val cleanedText = cleanUpText(text)
+    // Now we have iterator over all words.
     val wordsIterator = """\s""".r split cleanedText
     var wordToIndex = Map.empty[String, Int]
     var indexToWord = Vector.empty[String]
@@ -45,5 +43,24 @@ object TextIndexer {
       cursor = cursor + 1
     }
     new IndexedText(textWordsIndexes, indexToWord, wordToIndex, wordIndexToOccurrences)
+  }
+
+  def cleanUpText(text: String): String = {
+    var cleanedText = text.toLowerCase
+      .replaceAll("i\\'m", "i is")
+      .replaceAll("\\bam\\b", "is")
+      .replaceAll("\\bare\\b", "is")
+      .replaceAll("\\bwere\\b", "is")
+      .replaceAll("\\bwas\\b", "is")
+      .replaceAll("it\'s", "it is")
+      .replaceAll("\\'s", " has")
+      .replaceAll("n\'t", " ")
+      .replaceAll("\\bnot\\b", "")
+      // Let's get rid of apostrophes.
+      .replaceAll("\'", "")
+    cleanedText = """[^a-z]+""".r replaceAllIn(cleanedText, " ")
+    // 2 or more sequential spaces will collapse to one.
+    cleanedText = """\s{2}""".r replaceAllIn(cleanedText, " ")
+    cleanedText
   }
 }
