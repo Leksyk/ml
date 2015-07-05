@@ -14,7 +14,7 @@ class NGram(val center: Int, val divisorMap: Map[Int, Double]) {
     }
     // Promote for having many matches.
     val notMatched = Math.max(divisorMap.size, other.divisorMap.size) - matchCount
-    sum * matchCount * Math.pow(Flags.NGRAM_SIMILARITY_NOT_MATCH_PENTALTY_BASE, -notMatched)
+    sum * matchCount * Math.pow(Flags.NGRAM_SIMILARITY_NOT_MATCH_PENALTY_BASE, -notMatched)
   }
 }
 
@@ -34,7 +34,6 @@ class NGramExtractor(private val n: Int, private val indexedText: IndexedText) {
       for (position <- Math.max(index - n, 0) to Math.min(index + n, lastIndex)) {
         if (position != index) {
           val wordIndex = indexedText.text(position)
-          //Math.log(Math.abs(position - index) + Math.E)
           val divisor = Math.pow(Flags.NGRAM_DIST_FROM_CENTER_PENALTY_BASE, Math.abs(position - index - 1))
           mapBuilder += ((wordIndex, divisor))
         }

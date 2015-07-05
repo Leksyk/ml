@@ -29,9 +29,9 @@ class WordContextSimilarityCalculator(
       .take(Flags.MAX_SIMILAR_WORDS)
   }
 
-  def calcWordSimilarity(wordIndex1: Int, wordIndex2: Int): Double = {
-    val ngrams1 = nGrams(wordIndex1)
-    val ngrams2 = nGrams(wordIndex2)
+  def calcWordSimilarity(sourceWordIndex: Int, candidateWordIndex: Int): Double = {
+    val ngrams1 = nGrams(sourceWordIndex)
+    val ngrams2 = nGrams(candidateWordIndex)
     var ngramOverlapsBuilder = Vector.newBuilder[Double]
     var zeroCount = 0
     for (ngram1 <- ngrams1) {
@@ -49,10 +49,7 @@ class WordContextSimilarityCalculator(
     }
     val nGramOverlaps = ngramOverlapsBuilder result()
     val sum = nGramOverlaps.sum
-    val avg = if (nGramOverlaps.nonEmpty) sum / nGramOverlaps.length else 0
-    //if (nGramOverlaps.nonEmpty) nGramOverlaps.sum / nGramOverlaps.length else 0
-    //harmonicMean(nGramOverlaps) / Math.log(zeroCount + Math.E)
-    sum * Math.pow(Flags.WORD_SIMILARITY_PROMOTION_BASE, 1 + sum) / nGramOverlaps.length / Math.log(zeroCount + Math.E)
+    sum * Math.pow(Flags.WORD_SIMILARITY_PROMOTION_BASE, 1 + sum) / ngrams1.length / ngrams2.length / (zeroCount + 1)
   }
 
   private def getNGramSetVectors(indexedText: IndexedText, nGramExtractor: NGramExtractor): Vector[Vector[NGram]] = {
