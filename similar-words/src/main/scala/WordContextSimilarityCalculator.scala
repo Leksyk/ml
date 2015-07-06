@@ -42,35 +42,26 @@ class WordContextSimilarityCalculator(
       .take(Flags.MAX_SIMILAR_WORDS)
   }
 
-  def calcWordSimilarity(sourceWordIndex: Int, candidateWordIndex: Int): Double = {
+  def getWordSimilarityNGrams(sourceWordIndex: Int, candidateWordIndex: Int): Traversable[(NGram, NGram, Double)] = {
     val ngrams1 = nGrams(sourceWordIndex)
     val ngrams2 = nGrams(candidateWordIndex)
     var ngramOverlapsBuilder = Vector.newBuilder[Double]
     var zeroCount = 0
-    for (ngram1 <- ngrams1) {
-      for (ngram2 <- ngrams2) {
-        // This check still lets their edges overlap.
-        if (Math.abs(ngram1.center - ngram2.center) > Flags.MIN_NGRAM_DIST) {
-          val score: Double = ngram1 & ngram2
-          if (score != 0) {
-            ngramOverlapsBuilder += score
-          } else {
-            zeroCount += 1
-          }
-        }
-      }
-    }
-    val nGramOverlaps = ngramOverlapsBuilder result()
-    val sum = nGramOverlaps.sum
-    sum * Math.pow(Flags.WORD_SIMILARITY_PROMOTION_BASE, 1 + sum) / ngrams1.length / ngrams2.length / (zeroCount + 1)
+    (ngrams1 cartezianProduct ngrams2)
+      .filter { case (ng1, ng2) => ng1.center - ng2.center > Flags.MIN_NGRAM_DIST }
+      .map { case (ng1, ng2) => (ng1, ng2, ng1 & ng2) }
+  }
+
+  def calcWordSimilarity(sourceWordIndex: Int, candidateWordIndex: Int): Double = {
+    val scores = getWordSimilarityNGrams(sourceWordIndex, candidateWordIndex)
+    scores.map{case (ng1, ng2, score) => score}.sum
   }
 
   def calcWordGroupSimilarity(wordIndexes: Iterable[Int], candidateWordIndex: Int): Double = {
     val similaritiesVector = wordIndexes
       .par
       .map(wordIndex => calcWordSimilarity(wordIndex, candidateWordIndex))
-      .toVector
-    harmonicMean(similaritiesVector)
+    similaritiesVector.sum
   }
 
   private def getNGramSetVectors(indexedText: IndexedText, nGramExtractor: NGramExtractor): Vector[Vector[NGram]] = {

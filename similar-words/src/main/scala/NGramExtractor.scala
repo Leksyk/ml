@@ -1,6 +1,6 @@
 
 /** Range of indexes within indexedText */
-class NGram(val center: Int, val divisorMap: Map[Int, Double]) {
+class NGram(val center: Int, val startPos: Int, val endPos: Int, val divisorMap: Map[Int, Double], val penaltyDivisor: Double) {
   /** Score - level of intersection between two NGrams. Doesn't take into account word order. */
   def &(other: NGram): Double = {
     var sum = 0.0
@@ -9,12 +9,24 @@ class NGram(val center: Int, val divisorMap: Map[Int, Double]) {
       val maybeOtherDivisor = other.divisorMap.get(wordIndex)
       if (maybeOtherDivisor.isDefined) {
         matchCount = matchCount + 1
-        sum = sum + 1.0 / (divisor * maybeOtherDivisor.get)
+        sum += 1.0 / (divisor * maybeOtherDivisor.get)
       }
     }
     // Promote for having many matches.
-    val notMatched = Math.max(divisorMap.size, other.divisorMap.size) - matchCount
-    sum * matchCount * Math.pow(Flags.NGRAM_SIMILARITY_NOT_MATCH_PENALTY_BASE, -notMatched)
+    sum * matchCount / penaltyDivisor / other.penaltyDivisor
+  }
+
+  def toString(indexedText: IndexedText): String = {
+    val result = StringBuilder.newBuilder
+    result ++= "%s(/%f) => ".format(indexedText.indexToWord(indexedText.text(center)), penaltyDivisor)
+    result ++= (startPos to endPos)
+      .map(pos => indexedText.text(pos))
+      .map(wordIndex => (wordIndex, divisorMap.getOrElse(wordIndex, 0.0)))
+      .map{ case (wordIndex, divisor) =>
+        "%s/%f ".format(indexedText.indexToWord(wordIndex), divisor)
+      }
+      .mkString(" ")
+    result result()
   }
 }
 
@@ -31,15 +43,27 @@ class NGramExtractor(private val n: Int, private val indexedText: IndexedText) {
     result.sizeHint(occurrences.length)
     for (index <- occurrences) {
       val mapBuilder = Map.newBuilder[Int, Double]
-      for (position <- Math.max(index - n, 0) to Math.min(index + n, lastIndex)) {
+      val startPos = Math.max(index - n, 0)
+      val endPos = Math.min(index + n, lastIndex)
+      for (position <- startPos to endPos) {
         if (position != index) {
           val wordIndex = indexedText.text(position)
-          val divisor = Math.pow(Flags.NGRAM_DIST_FROM_CENTER_PENALTY_BASE, Math.abs(position - index - 1))
+          val divisor = distancePenaltyDivisor(position, index) * popularityPenaltyDivisor(wordIndex)
           mapBuilder += ((wordIndex, divisor))
         }
       }
-      result += new NGram(index, mapBuilder result())
+      result += new NGram(index, startPos, endPos, mapBuilder result(),
+        popularityPenaltyDivisor(wordIndex))
     }
     result result()
+  }
+
+  def popularityPenaltyDivisor(wordIndex: Int): Double = {
+    val popularity = indexedText.wordIndexToOccurrences(wordIndex).length
+    Math.pow(Flags.NGRAM_WORD_POPULARITY_PENALTY_BASE, 100.0 * popularity.toDouble / indexedText.text.length)
+  }
+
+  def distancePenaltyDivisor(position: Int, center: Int): Double = {
+    Math.pow(Flags.NGRAM_DIST_FROM_CENTER_PENALTY_BASE, Math.abs(position - center - 1))
   }
 }

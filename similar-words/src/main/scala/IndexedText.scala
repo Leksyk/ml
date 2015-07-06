@@ -14,7 +14,7 @@ class IndexedText(val text: Vector[Int],
   println("most common words: " + wordIndexToOccurrences
     .sortBy(-_.length)
     .take(300)
-    .map(inds => wordFromIndex(text(inds.head))).toString())
+    .map(inds => wordFromIndex(text(inds.head)) + " (%d)".format(inds.length)))
 }
 
 object TextIndexer {
